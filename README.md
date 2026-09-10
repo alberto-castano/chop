@@ -132,7 +132,7 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) to get the rep
 
 ## Stats
 
-![Stats](https://repobeats.axiom.co/api/embed/a4ea68c4f6820d5e1cb0d2681ec946a89b945790.svg "Repobeats analytics image")
+![Stats](https://repobeats.axiom.co/api/embed/cc304d13985b86354071e0af429828e6d71e7af6.svg "Repobeats analytics image")
 
 ## Star History
 
