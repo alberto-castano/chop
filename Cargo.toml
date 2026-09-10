@@ -1,6 +1,6 @@
 [package]
 name = "chop"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 description = "Find and remove linked Git worktrees without losing local work by accident"
 license = "MIT"

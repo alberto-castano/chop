@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.0 - 2026-09-10
+
 - Add space around the scan status and preserve the tree outline throughout the chopping animation.
 
 - Use the same warm-colored ASCII log header across setup, scanning, worktree plans, progress, results, and saved notices.
