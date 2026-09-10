@@ -1,0 +1,131 @@
+name: Release
+run-name: Release ${{ inputs.version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Stable version already merged into main (for example 0.3.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Validate version and release notes
+        env:
+          VERSION: ${{ inputs.version }}
+        run: python3 .github/scripts/release-metadata.py "$VERSION" "$RUNNER_TEMP/notes.md"
+      - name: Require successful CI for the exact commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run list --workflow ci.yml --commit "$GITHUB_SHA" --event push --limit 1 \
+            --json conclusion | jq -e 'length == 1 and .[0].conclusion == "success"'
+      - name: Check tap credentials and workflow
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          test -n "$GH_TOKEN"
+          gh api repos/alberto-castano/homebrew-tap/actions/workflows/update-chop.yml \
+            --jq '.state' | grep -x active
+      - name: Create or verify version tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          tag="v$VERSION"
+          if git show-ref --verify --quiet "refs/tags/$tag"; then
+            test "$(git rev-parse "$tag^{commit}")" = "$GITHUB_SHA"
+          else
+            git tag "$tag" "$GITHUB_SHA"
+            git push origin "refs/tags/$tag"
+          fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-notes
+          path: ${{ runner.temp }}/notes.md
+
+  verify:
+    needs: prepare
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install and verify tagged source
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          curl --fail --location --retry 3 \
+            "https://github.com/$GITHUB_REPOSITORY/archive/refs/tags/v$VERSION.tar.gz" -o source.tar.gz
+          mkdir source
+          tar -xzf source.tar.gz --strip-components=1 -C source
+          cargo install --path source --locked --root "$RUNNER_TEMP/chop"
+          test "$("$RUNNER_TEMP/chop/bin/chop" --version)" = "chop $VERSION"
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-notes
+          path: notes
+      - name: Publish release or preserve existing publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          tag="v$VERSION"
+          if gh release view "$tag" --json isDraft > release.json; then
+            if jq -e '.isDraft' release.json; then
+              gh release edit "$tag" --draft=false --notes-file notes/notes.md
+            fi
+          else
+            gh release create "$tag" --verify-tag --title "chop $VERSION" --notes-file notes/notes.md
+          fi
+
+  homebrew:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Dispatch and wait for tap update
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          request_id="chop-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          gh workflow run update-chop.yml --repo alberto-castano/homebrew-tap --ref main \
+            -f version="$VERSION" -f request_id="$request_id"
+          for attempt in {1..30}; do
+            run_id=$(gh run list --repo alberto-castano/homebrew-tap --workflow update-chop.yml \
+              --event workflow_dispatch --limit 50 --json databaseId,displayTitle \
+              --jq ".[] | select(.displayTitle == \"Update chop $VERSION ($request_id)\") | .databaseId")
+            if test -n "$run_id"; then
+              gh run watch "$run_id" --repo alberto-castano/homebrew-tap --exit-status
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'Tap workflow did not appear within 150 seconds' >&2
+          exit 1

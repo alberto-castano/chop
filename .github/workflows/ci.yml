@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked
+      - run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'

@@ -1,0 +1,22 @@
+[package]
+name = "chop"
+version = "0.2.0"
+edition = "2024"
+description = "Find and remove linked Git worktrees without losing local work by accident"
+license = "MIT"
+repository = "https://github.com/alberto-castano/chop"
+homepage = "https://github.com/alberto-castano/chop"
+readme = "README.md"
+rust-version = "1.88"
+keywords = ["cli", "git", "worktree", "cleanup"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+crossterm = "0.29"
+ratatui = { version = "0.30.2", default-features = false, features = ["crossterm"] }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = "symbols"

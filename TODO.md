@@ -1,0 +1,1 @@
+- [ ] Find the way to publish it as a `brew install chop` without my name on it
