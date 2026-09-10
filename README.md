@@ -118,7 +118,7 @@ See the [changelog](CHANGELOG.md) for release history.
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) to get the repo running locally and land a change, and use [issues](https://github.com/a tlberto-castano/chop/issues) and [discussions](https://github.com/alberto-castano/chop/discussions) to collaborate. By participating, you agree to the [Code of Conduct](./CODE_OF_CONDUCT.md).
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) to get the repo running locally and land a change, and use [issues](https://github.com/alberto-castano/chop/issues) and [discussions](https://github.com/alberto-castano/chop/discussions) to collaborate. By participating, you agree to the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
 ## License
 
